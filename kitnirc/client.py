@@ -186,6 +186,23 @@ class Client(object):
         """Send a NOTICE to a user or channel."""
         self.send("NOTICE", target, ":" + message)
 
+    def join(self, target, key=None):
+        """Attempt to join a channel.
+
+        The optional second argument is the channel key, if needed.
+        """
+        if not target.startswith("#"):
+            _log.warning("Refusing to join channel that does not start "
+                         "with '#': %s", target)
+            return
+
+        _log.info("Joining channel %s ...", target)
+        self.send("JOIN", target, *([key] if key else []))
+
+    def part(self, target):
+        """Part a channel."""
+        self.send("PART", target)
+
 
 ################################################################################
 # DEFAULT LOW-LEVEL EVENT HANDLERS
