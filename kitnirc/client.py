@@ -118,6 +118,8 @@ class Client(object):
             _log.warning("Disconnect requested from non-connected client (%s)",
                 self.server.host)
             return
+
+        _log.info("Disconnecting from %s ...", self.server.host)
         self._stop = True
         self.send("QUIT", ":" + msg)
         try:
