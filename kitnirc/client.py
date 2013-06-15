@@ -1,10 +1,49 @@
 import logging
+import re
 import socket
 
 from kitnirc.events import NUMERIC_EVENTS
 from kitnirc.user import User
 
 _log = logging.getLogger(__name__)
+
+
+class Channel(object):
+    """Information about an IRC channel.
+
+    This class keeps track of things like who is in a channel, the channel
+    topic, modes, and so on.
+    """
+
+    def __init__(self, name):
+        self.name = name
+        self.topic = None
+        self.members = {}
+        self.modes = {}
+
+    def add_user(self, user):
+        """Adds a user to the channel."""
+        if not isinstance(user, User):
+            user = User(user)
+        if user.nick in self.members:
+            _log.warning("Ignoring request to add user '%s' to channel '%s' "
+                         "because that user is already in the member list.",
+                         user, self.name)
+            return
+        self.members[user.nick] = user
+        _log.debug("Added '%s' to channel '%s'", user, self.name)
+
+    def remove_user(self, user):
+        """Removes a user from the channel."""
+        if not isinstance(user, User):
+            user = User(user)
+        if user.nick not in self.members:
+            _log.warning("Ignoring request to remove user '%s' from channel "
+                         "'%s' because that user is already in the member "
+                         "list.", user, self.name)
+            return
+        del self.members[user.nick]
+        _log.debug("Removed '%s' from channel '%s'", user, self.name)
 
 
 class Host(object):
@@ -16,11 +55,42 @@ class Host(object):
 
     def __init__(self, host, port):
         self.host = host
+        # We also keep track of the host we originally connected to - e.g.
+        # if we connected to a round-robin alias.
+        self.original_host = host
         self.port = port
-        self.user = None
         self.password = None
-        self.motd = ""
+
+        self.motd = "" # The full text of the MOTD, once received
         self._motd = [] # Receive buffer; do not use for reading
+
+        # The channels we're in, keyed by channel name
+        self.channels = {}
+
+        # What features modes are available on the server
+        self.features = dict()
+        self.user_modes = set()
+        self.channel_modes = set()
+
+        # Miscellaneous information about the server
+        self.version = None
+        self.created = None
+
+    def add_channel(self, name):
+        if name in self.channels:
+            _log.warning("Ignoring request to add a channel that has already "
+                         "been added: '%s'", name)
+            return
+        self.channels[name] = Channel(name)
+        _log.info("Entered channel %s.", name)
+
+    def remove_channel(self, name):
+        if name not in self.channels:
+            _log.warning("Ignoring request to remove a channel that hasn't "
+                         "been added: '%s'", name)
+            return
+        del self.channels[name]
+        _log.info("Left channel %s.", name)
 
 
 class Client(object):
@@ -55,12 +125,36 @@ class Client(object):
             # being recognized as a valid user by the IRC server.
             'WELCOME': [],
             # Fires when a privmsg is received
-            'PRIVMSG': [],
+            'PRIVMSG': [], # actor, recipien
             # Fires when a notice is received
             'NOTICE': [],
             # Fires when a complete MOTD is received
             'MOTD': [],
+            # Fires when a user joins a channel
+            'JOIN': [],
+            # Fires when a user parts a channel
+            'PART': [],
+            # Fires when a user is kicked from a channel
+            'KICK': [],
+            # Fires when the list of users in a channel has been updated
+            'MEMBERS': [],
         }
+
+    def add_handler(self, event, handler):
+        """Adds a handler for a particular event.
+
+        Handlers are appended to the list, so a handler added earlier
+        will be called before a handler added later. If you wish to
+        insert a handler at another position, you should modify the
+        event_handlers property directly:
+
+            my_client.event_handlers['PRIVMSG'].insert(0, my_handler)
+        """
+        if event not in self.event_handlers:
+            _log.warning("Adding event handler for unknown event %s.")
+            self.event_handlers[event] = [handler]
+        else:
+            self.event_handlers[event].append(handler)
 
     def dispatch_event(self, event, *args):
         """Dispatches an event.
@@ -92,8 +186,7 @@ class Client(object):
 
     def connect(self, nick, username=None, realname=None, password=None):
         """Connect to the server using the specified credentials."""
-        self.user = self.server.user = User(nick)
-
+        self.user = User(nick)
         self.user.username = username or nick
         self.user.realname = realname or username or nick
 
@@ -143,8 +236,9 @@ class Client(object):
             lines = self._buffer.split("\n")
             self._buffer = lines.pop() # We may still need to more of the last
             for line in lines:
+                line = line.rstrip("\r")
                 _log.debug("%s --> %s", self.server.host, line)
-                self.dispatch_event('LINE', line)
+                self.dispatch_event("LINE", line)
 
     def send(self, *args):
         """Sends a single raw message to the IRC server.
@@ -160,7 +254,7 @@ class Client(object):
     def nick(self, nick):
         """Attempt to set the nickname for this connection."""
         _log.info("Requesting nick change to '%s'", nick)
-        self.send('NICK', nick)
+        self.send("NICK", nick)
 
     def userinfo(self, username, realname=None):
         """Set the username and realname for this connection.
@@ -173,7 +267,7 @@ class Client(object):
         _log.info("Requesting user info update: username=%s realname=%s",
             username, realname)
 
-        self.send('USER', username, socket.getfqdn(), self.server.host,
+        self.send("USER", username, socket.getfqdn(), self.server.host,
             ":%s" % realname) # Realname should always be prefixed by a colon
         self.user.username = username
         self.user.realname = realname
@@ -192,16 +286,44 @@ class Client(object):
         The optional second argument is the channel key, if needed.
         """
         if not target.startswith("#"):
+            # Among other things, this prevents accidentally sending the
+            # "JOIN 0" command which actually removes you from all channels
             _log.warning("Refusing to join channel that does not start "
                          "with '#': %s", target)
+            return
+
+        if target in self.server.channels:
+            _log.warning("Ignoring request to join channel '%s' because we "
+                         "are already in that channel.", target)
             return
 
         _log.info("Joining channel %s ...", target)
         self.send("JOIN", target, *([key] if key else []))
 
-    def part(self, target):
+    def part(self, target, message=None):
         """Part a channel."""
-        self.send("PART", target)
+        if target not in self.server.channels:
+            _log.warning("Ignoring request to part channel '%s' because we "
+                         "are not in that channel.", target)
+            return
+        self.send("PART", target, *([message] if message else []))
+
+    def handle(self, event):
+        """Decorator for adding a handler function for a particular event.
+
+        Usage:
+
+            my_client = Client()
+
+            @my_client.handle("WELCOME")
+            def welcome_handler(client, *params):
+                # Do something with the event.
+                pass
+        """
+        def dec(func):
+            self.add_handler(event, func)
+            return func
+        return dec
 
 
 ################################################################################
@@ -237,14 +359,18 @@ def on_line(client, line):
         return True
 
     if line.startswith(":"):
-        sender, _, line = line.partition(" ")
+        actor, _, line = line[1:].partition(" ")
     else:
-        sender = None
+        actor = None
     command, _, args = line.partition(" ")
     command = NUMERIC_EVENTS.get(command, command)
 
-    if command in PARSERS:
-        PARSERS[command](client, command, sender, args)
+    parser = PARSERS.get(command, False)
+    if parser:
+        parser(client, command, actor, args)
+        return True
+    elif parser is False:
+        # Explicitly ignored message
         return True
 
 
@@ -253,19 +379,31 @@ def on_line(client, line):
 ################################################################################
 
 # Holds a mapping of IRC commands to functions that will parse them and
-# take any necessary action.
-PARSERS = {}
+# take any necessary action. We define some ignored events here as well.
+PARSERS = {
+    "YOURHOST": False,
+}
 
 
-def _parse_msg(client, command, sender, args):
+def parser(*events):
+    """Decorator for convenience - adds a function as a parser for event(s)."""
+    def dec(func):
+        for event in events:
+            PARSERS[event] = func
+        return func
+    return dec
+
+
+@parser("PRIVMSG", "NOTICE")
+def _parse_msg(client, command, actor, args):
     """Parse a PRIVMSG or NOTICE and dispatch the corresponding event."""
     recipient, _, message = args.partition(' :')
     recipient = User(recipient)
-    client.dispatch_event(command, sender, recipient, message)
-PARSERS['PRIVMSG'] = PARSERS['NOTICE'] = _parse_msg
+    client.dispatch_event(command, actor, recipient, message)
 
 
-def _parse_motd(client, command, sender, args):
+@parser("MOTDSTART", "ENDOFMOTD", "MOTD")
+def _parse_motd(client, command, actor, args):
     if command == "MOTDSTART":
         client.server._motd = []
     if command == "ENDOFMOTD":
@@ -273,6 +411,172 @@ def _parse_motd(client, command, sender, args):
         client.dispatch_event("MOTD", client.server.motd)
     if command == "MOTD":  # MOTD line
         client.server._motd.append(args.partition(":")[2])
-PARSERS["MOTDSTART"] = PARSERS["ENDOFMOTD"] = PARSERS["MOTD"] = _parse_motd
+
+
+@parser("JOIN")
+def _parse_join(client, command, actor, args):
+    """Parse a JOIN and update channel states, then dispatch events.
+
+    Note that two events are dispatched here:
+        - JOIN, because a user joined the channel
+        - MEMBERS, because the channel's members changed
+    """
+    actor = User(actor)
+    channel = args.lstrip(' :')
+    print repr(actor.nick), repr(client.user.nick)
+    if actor.nick == client.user.nick:
+        client.server.add_channel(channel)
+        client.user.host = actor.host # now we know our host per the server
+    client.server.channels[channel].add_user(actor)
+    client.dispatch_event("JOIN", actor, channel)
+    client.dispatch_event("MEMBERS", channel)
+
+
+@parser("PART")
+def _parse_part(client, command, actor, args):
+    """Parse a PART and update channel states, then dispatch events.
+
+    Note that two events are dispatched here:
+        - PART, because a user parted the channel
+        - MEMBERS, because the channel's members changed
+    """
+    actor = User(actor)
+    channel, _, message = args.partition(' :')
+    client.server.channels[channel].remove_user(actor)
+    if actor.nick == client.user.nick:
+        client.server.remove_channel(channel)
+    client.dispatch_event("PART", actor, channel, message)
+    client.dispatch_event("MEMBERS", channel)
+
+
+@parser("QUIT")
+def _parse_quit(client, command, actor, args):
+    """Parse a QUIT and update channel states, then dispatch events.
+
+    Note that two events are dispatched here:
+        - QUIT, because a user quit the server
+        - MEMBERS, for each channel the user is no longer in
+    """
+    actor = User(actor)
+    _, _, message = args.partition(':')
+    client.dispatch_event("QUIT", actor, message)
+    for chan in client.server.channels.itervalues():
+        if actor.nick in chan.members:
+            chan.remove(actor)
+            client.dispatch_event("MEMBERS", chan.name)
+
+
+@parser("KICK")
+def _parse_kick(client, command, actor, args):
+    """Parse a KICK and update channel states, then dispatch events.
+
+    Note that two events are dispatched here:
+        - KICK, because a user was kicked from the channel
+        - MEMBERS, because the channel's members changed
+    """
+    actor = User(actor)
+    args, _, message = args.partition(' :')
+    channel, target = args.split()
+    target = User(target)
+    client.server.channels[channel].remove_user(target)
+    if target.nic == client.user.nick:
+        client.server.remove_channel(channel)
+    client.dispatch_event("KICK", actor, target, channel, message)
+    client.dispatch_event("MEMBERS", channel)
+
+
+@parser("TOPIC")
+def _parse_topic(client, command, actor, args):
+    """Parse a TOPIC and update channel state, then dispatch a TOPIC event."""
+    channel, _, topic = args.partition(" :")
+    client.server.channels[channel].topic = topic or None
+    if actor:
+        actor = User(actor)
+    client.dispatch_event("TOPIC", actor, channel, topic)
+
+
+@parser("WELCOME")
+def _parse_welcome(client, command, actor, args):
+    """Parse a WELCOME and update user state, then dispatch a WELCOME event."""
+    _, _, hostmask = args.rpartition(' ')
+    client.user.update_from_hostmask(hostmask)
+    client.dispatch_event("WELCOME", hostmask)
+
+
+@parser("CREATED")
+def _parse_created(client, command, actor, args):
+    """Parse CREATED and update the Host object."""
+    m = re.search("This server was created (.+)$", args)
+    if m:
+        client.server.created = m.group(1)
+
+
+@parser("MYINFO")
+def _parse_myinfo(client, command, actor, args):
+    """Parse MYINFO and update the Host object."""
+    _, server, version, usermodes, channelmodes = args.rsplit(None, 4)
+    s = client.server
+    s.host = server
+    s.version = version
+    s.user_modes = set(usermodes)
+    s.channel_models = set(channelmodes)
+
+
+@parser("FEATURELIST")
+def _parse_featurelist(client, command, actor, args):
+    """Parse FEATURELIST and update the Host object."""
+    # Strip off ":are supported by this server"
+    args = args.rsplit(":", 1)[0]
+    # Strip off the nick; we know it's addressed to us.
+    _, _, args = args.partition(' ')
+
+    items = args.split()
+    for item in items:
+        feature, _, value = item.partition("=")
+
+        # Convert integer values to actual integers for convenience
+        try:
+            value = int(value)
+        except (ValueError, TypeError):
+            pass
+
+        client.server.features[feature] = value
+
+
+@parser("NAMREPLY")
+def _parse_namreply(client, command, actor, args):
+    """Parse NAMREPLY and update a Channel object."""
+    prefixes = '~&@%+'
+    feature_prefixes = client.server.features.get('PREFIX')
+    if feature_prefixes:
+        _, _, prefixes = feature_prefixes.rpartition(')')  # "(modes)prefixes"
+
+    channelinfo, _, useritems = args.partition(' :')
+    _, _, channel = channelinfo.rpartition(' ')  # channeltype channelname
+
+    c = client.server.channels.get(channel)
+    if not c:
+        _log.warning("Ignoring NAMREPLY for channel '%s' which we are not in.",
+            channel)
+        return
+
+    # We bypass Channel.add_user() here because we just want to sync in any
+    # users we don't already have, regardless of if other users exist, and
+    # we don't want the warning spam.
+    for item in useritems.split():
+        # TODO: track user modes
+        nick = item.lstrip(prefixes)
+        user = c.members.get(nick)
+        if not user:
+            user = c.members[nick] = User(nick)
+            _log.debug("Added user %s to channel %s", user, channel)
+
+
+@parser("ENDOFNAMES")
+def _parse_endofnames(client, command, actor, args):
+    """Parse an ENDOFNAMES and dispatch a NAMES event for the channel."""
+    args = args.split(" :", 1)[0] # Strip off human-readable message
+    _, _, channel = args.rpartition(' ')
+    client.dispatch_event('MEMBERS', channel)
 
 # vim: set ts=4 sts=4 sw=4 et:

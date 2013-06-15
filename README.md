@@ -13,3 +13,11 @@ License
 -------
 
 KitnIRC is licensed under the MIT License (see `LICENSE` for details).
+
+Other Resources
+---------------
+
+Useful reference documents for those working with the IRC protocol as a client:
+
+ * [RFC 2812](http://tools.ietf.org/html/rfc2812)
+ * [ISUPPORT draft](http://tools.ietf.org/html/draft-brocklesby-irc-isupport-03)

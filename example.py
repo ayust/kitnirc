@@ -1,5 +1,5 @@
 #!/usr/bin/python
-"""Example bot using KitnIRC. Just connects to a server."""
+"""Example bot using KitnIRC. Just connects to a server and joins channels."""
 import argparse
 import logging
 
@@ -17,6 +17,8 @@ def main():
     parser.add_argument("--realname", help="Real name to use. If not set, "
                                            "defaults to username.")
     parser.add_argument("--password", help="IRC server password, if any.")
+    parser.add_argument("--join", help="Comma-separated list of channels "
+                                       "to join on connect.")
     args = parser.parse_args()
 
     # Logging initialization
@@ -37,6 +39,13 @@ def main():
         password=args.password,
     )
     try:
+        @c.handle('WELCOME')
+        def join_channels(client, *params):
+            if not args.join:
+                return
+            for chan in args.join.split(","):
+                client.join(chan)
+
         c.run()
     except KeyboardInterrupt:
         c.disconnect()
