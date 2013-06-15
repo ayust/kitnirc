@@ -32,8 +32,8 @@ class Client(object):
 
     def __init__(self, host, port=6667):
         self.server = Host(host, port)
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connected = False
+        self.socket = None
         self._stop = False
         self._buffer = ""
 
@@ -99,6 +99,7 @@ class Client(object):
 
         _log.info("Connecting to %s as %s ...", self.server.host, nick)
 
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((self.server.host, self.server.port))
         self.connected = True
 
@@ -119,6 +120,10 @@ class Client(object):
             return
         self._stop = True
         self.send("QUIT", ":" + msg)
+        try:
+            self.socket.close()
+        except socket.error:
+            pass
 
     def run(self):
         """Process events such as incoming data.

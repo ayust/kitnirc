@@ -36,7 +36,10 @@ def main():
         realname=args.realname or args.username or args.nick,
         password=args.password,
     )
-    c.run()
+    try:
+        c.run()
+    except KeyboardInterrupt:
+        c.disconnect()
 
 
 if __name__ == "__main__":
