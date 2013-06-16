@@ -17,8 +17,8 @@ def main():
     parser.add_argument("--realname", help="Real name to use. If not set, "
                                            "defaults to username.")
     parser.add_argument("--password", help="IRC server password, if any.")
-    parser.add_argument("--join", help="Comma-separated list of channels "
-                                       "to join on connect.")
+    parser.add_argument("--join", metavar="CHAN[,CHAN...]",
+        help="Comma-separated list of channels to join on connect.")
     args = parser.parse_args()
 
     # Logging initialization
