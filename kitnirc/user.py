@@ -12,6 +12,7 @@ class User(object):
         self._nick = None
         self.update_from_hostmask(hostmask)
         self.realname = None
+        self.modes = set()
 
     def update_from_hostmask(self, hostmask):
         self.nick, self.username, self.host = split_hostmask(hostmask)

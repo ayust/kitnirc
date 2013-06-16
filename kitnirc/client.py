@@ -8,6 +8,8 @@ from kitnirc.user import User
 _log = logging.getLogger(__name__)
 
 
+
+
 class Channel(object):
     """Information about an IRC channel.
 
@@ -138,6 +140,8 @@ class Client(object):
             'KICK': [],
             # Fires when the list of users in a channel has been updated
             'MEMBERS': [],
+            # Fires whenever a mode change occurs
+            'MODE': [],
         }
 
     def add_handler(self, event, handler):
@@ -285,11 +289,12 @@ class Client(object):
 
         The optional second argument is the channel key, if needed.
         """
-        if not target.startswith("#"):
+        chantypes = self.server.features.get("CHANTYPES", "#")
+        if not target or target[0] not in chantypes:
             # Among other things, this prevents accidentally sending the
             # "JOIN 0" command which actually removes you from all channels
             _log.warning("Refusing to join channel that does not start "
-                         "with '#': %s", target)
+                         "with one of '%s': %s", chantypes, target)
             return
 
         if target in self.server.channels:
@@ -324,6 +329,19 @@ class Client(object):
             self.add_handler(event, func)
             return func
         return dec
+
+    def _get_prefixes(self):
+        """Get the possible nick prefixes and associated modes for a client."""
+        prefixes = {
+            "@": "o",
+            "+": "v",
+        }
+        feature_prefixes = self.server.features.get('PREFIX')
+        if feature_prefixes:
+            modes = feature_prefixes[1:len(feature_prefixes)//2]
+            symbols = feature_prefixes[len(feature_prefixes)//2+1:]
+            prefixes = dict(zip(symbols, modes))
+        return prefixes
 
 
 ################################################################################
@@ -423,13 +441,14 @@ def _parse_join(client, command, actor, args):
     """
     actor = User(actor)
     channel = args.lstrip(' :')
-    print repr(actor.nick), repr(client.user.nick)
     if actor.nick == client.user.nick:
         client.server.add_channel(channel)
         client.user.host = actor.host # now we know our host per the server
     client.server.channels[channel].add_user(actor)
     client.dispatch_event("JOIN", actor, channel)
-    client.dispatch_event("MEMBERS", channel)
+    if actor.nick != client.user.nick:
+        # If this is us joining, the namreply will trigger this instead
+        client.dispatch_event("MEMBERS", channel)
 
 
 @parser("PART")
@@ -519,7 +538,7 @@ def _parse_myinfo(client, command, actor, args):
     s.host = server
     s.version = version
     s.user_modes = set(usermodes)
-    s.channel_models = set(channelmodes)
+    s.channel_modes = set(channelmodes)
 
 
 @parser("FEATURELIST")
@@ -546,10 +565,7 @@ def _parse_featurelist(client, command, actor, args):
 @parser("NAMREPLY")
 def _parse_namreply(client, command, actor, args):
     """Parse NAMREPLY and update a Channel object."""
-    prefixes = '~&@%+'
-    feature_prefixes = client.server.features.get('PREFIX')
-    if feature_prefixes:
-        _, _, prefixes = feature_prefixes.rpartition(')')  # "(modes)prefixes"
+    prefixes = client._get_prefixes()
 
     channelinfo, _, useritems = args.partition(' :')
     _, _, channel = channelinfo.rpartition(' ')  # channeltype channelname
@@ -563,13 +579,16 @@ def _parse_namreply(client, command, actor, args):
     # We bypass Channel.add_user() here because we just want to sync in any
     # users we don't already have, regardless of if other users exist, and
     # we don't want the warning spam.
-    for item in useritems.split():
-        # TODO: track user modes
-        nick = item.lstrip(prefixes)
+    for nick in useritems.split():
+        modes = set()
+        while nick[0] in prefixes:
+            modes.add(prefixes[nick[0]])
+            nick = nick[1:]
         user = c.members.get(nick)
         if not user:
             user = c.members[nick] = User(nick)
             _log.debug("Added user %s to channel %s", user, channel)
+        user.modes |= modes
 
 
 @parser("ENDOFNAMES")
@@ -578,5 +597,75 @@ def _parse_endofnames(client, command, actor, args):
     args = args.split(" :", 1)[0] # Strip off human-readable message
     _, _, channel = args.rpartition(' ')
     client.dispatch_event('MEMBERS', channel)
+
+
+@parser("MODE")
+def _parse_mode(client, command, actor, args):
+    """Parse a mode changes, update states, and dispatch MODE events."""
+    chantypes = client.server.features.get("CHANTYPES", "#")
+    channel, _, args = args.partition(" ")
+    args = args.lstrip(":")
+
+    if channel[0] not in chantypes:
+        # Personal modes
+        for modes in args.split():
+            op, modes = modes[0], modes[1:]
+            for mode in modes:
+                if op == "+":
+                    client.user.modes.add(mode)
+                else:
+                    client.user.modes.discard(mode)
+                client.dispatch_event("MODE", actor, channel, op, mode, None)
+        return
+
+    # channel-specific modes
+    chan = client.server.channels[channel]
+
+    user_modes = set(client._get_prefixes().itervalues())
+
+    chanmodes = client.server.features.get('CHANMODES')
+    if not chanmodes:
+        # Defaults from RFC 2811
+        argument_modes = set("beIkl")
+        set_arg_modes = set("kl")
+        toggle_modes = set("aimnqpsrt")
+    else:
+        chanmodes = chanmodes.split(",")
+        list_modes = set(chanmodes[0])
+        always_arg_modes = set(chanmodes[1])
+        set_arg_modes = set(chanmodes[2])
+        toggle_modes = set(chanmodes[3])
+        argument_modes = list_modes | always_arg_modes | set_arg_modes
+
+    tokens = args.split()
+    while tokens:
+        modes, tokens = tokens[0], tokens[1:]
+        op, modes = modes[0], modes[1:]
+
+        for mode in modes:
+            argument = None
+            if mode in (user_modes | argument_modes):
+                argument, tokens = tokens[0], tokens[1:]
+
+            if mode in user_modes:
+                user = client.server.channels[channel].members[argument]
+                if op == "+":
+                    user.modes.add(mode)
+                else:
+                    user.modes.discard(mode)
+
+            if op == "+":
+                if mode in (always_arg_modes | set_arg_modes):
+                    chan.modes[mode] = argument
+                elif mode in toggle_modes:
+                    chan.modes[mode] = True
+            else:
+                if mode in (always_arg_modes | set_arg_modes | toggle_modes):
+                    if mode in chan.modes:
+                        del chan.modes[mode]
+
+            # list-type modes (bans+exceptions, invite masks) aren't stored,
+            # but do generate MODE events.
+            client.dispatch_event("MODE", actor, channel, op, mode, argument)
 
 # vim: set ts=4 sts=4 sw=4 et:
