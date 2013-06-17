@@ -71,6 +71,7 @@ NUMERIC_EVENTS = {
     "323": "LISTEND",
     "324": "CHANNELMODEIS",
     "329": "CHANNELCREATE",
+    "330": "WHOISACCOUNT", # Aaeriele 2013-06-16
     "331": "NOTOPIC",
     "332": "CURRENTTOPIC",
     "333": "TOPICINFO",

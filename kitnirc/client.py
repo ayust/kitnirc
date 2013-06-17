@@ -66,6 +66,9 @@ class Host(object):
         self.motd = "" # The full text of the MOTD, once received
         self._motd = [] # Receive buffer; do not use for reading
 
+        # Buffer for information from WHOIS response lines
+        self._whois = {}
+
         # The channels we're in, keyed by channel name
         self.channels = {}
 
@@ -249,7 +252,7 @@ class Client(object):
 
         Arguments are automatically joined by spaces. No newlines are allowed.
         """
-        msg = " ".join(args)
+        msg = " ".join(a.nick if isinstance(a, User) else str(a) for a in args)
         if "\n" in msg:
             raise ValueError("Cannot send() a newline. Args: %r" % args)
         _log.debug("%s <-- %s", self.server.host, msg)
@@ -333,6 +336,10 @@ class Client(object):
         If a message is not provided, defaults to own nick.
         """
         self.send("KICK", channel, nick, ":%s" % (message or self.user.nick))
+
+    def whois(self, nick):
+        """Request WHOIS information about a user."""
+        self.send("WHOIS", nick)
 
     def handle(self, event):
         """Decorator for adding a handler function for a particular event.
@@ -689,5 +696,55 @@ def _parse_mode(client, command, actor, args):
             # list-type modes (bans+exceptions, invite masks) aren't stored,
             # but do generate MODE events.
             client.dispatch_event("MODE", actor, channel, op, mode, argument)
+
+
+@parser('WHOISUSER', 'WHOISCHANNELS', 'WHOISIDLE', 'WHOISSERVER',
+        'WHOISOPERATOR', 'WHOISACCOUNT', 'ENDOFWHOIS')
+def _parse_whois(client, command, actor, args):
+    """Parse the content responses from a WHOIS query.
+
+    Individual response lines are parsed and used to fill in data in a buffer,
+    the full contents of which are then sent as the argument to the WHOIS
+    event dispatched when an ENDOFWHOIS line is received from the server.
+    """
+    _, _, args = args.partition(' ') # Strip off recipient, we know it's us
+    nick, _, args = args.partition(' ')
+    if client.server._whois.get('nick') != nick:
+        client.server._whois = {'nick': nick}
+    response = client.server._whois
+
+    if command == 'WHOISUSER':
+        first, _, response['realname'] = args.partition(':')
+        response['username'], response['host'] = first.split()[:2]
+        return
+
+    if command == 'WHOISISSERVER':
+        response['server'], _, response['serverinfo'] = args.partition(' :')
+        return
+
+    if command == 'WHOISOPERATOR':
+        response['oper'] = True
+        return
+
+    if command == 'WHOISIDLE':
+        response['idle'], _, _ = args.partition(' :')
+        response['idle'] = int(response['idle'])
+        return
+
+    if command == 'WHOISCHANNELS':
+        modes = ''.join(client._get_prefixes())
+        print repr(modes)
+        channels = args.lstrip(":").split()
+        response['channels'] = dict(
+            (chan.lstrip(modes), chan[0] if chan[0] in modes else '')
+            for chan in channels)
+        return
+
+    if command == 'WHOISACCOUNT':
+        response['account'], _, _ = args.partition(' :')
+        return
+
+    if command == 'ENDOFWHOIS':
+        client.dispatch_event('WHOIS', response)
 
 # vim: set ts=4 sts=4 sw=4 et:
