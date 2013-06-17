@@ -284,6 +284,14 @@ class Client(object):
         """Send a NOTICE to a user or channel."""
         self.send("NOTICE", target, ":" + message)
 
+    def ctcp(self, target, message):
+        """Send a CTCP message to a user or channel."""
+        self.msg(target, "\x01%s\x01" % message)
+
+    def emote(self, target, message):
+        """Sends an emote (/me ...) to a user or channel."""
+        self.ctcp(target, "ACTION %s" % message)
+
     def join(self, target, key=None):
         """Attempt to join a channel.
 
@@ -312,6 +320,19 @@ class Client(object):
                          "are not in that channel.", target)
             return
         self.send("PART", target, *([message] if message else []))
+
+    def quit(self, message=None):
+        """Quit the server (and stop the event loop).
+
+        This actually just calls .disconnect() with the provided message."""
+        self.disconnect(message)
+
+    def kick(self, channel, nick, message=None):
+        """Attempt to kick a user from a channel.
+
+        If a message is not provided, defaults to own nick.
+        """
+        self.send("KICK", channel, nick, ":%s" % (message or self.user.nick))
 
     def handle(self, event):
         """Decorator for adding a handler function for a particular event.
