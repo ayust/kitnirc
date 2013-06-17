@@ -626,7 +626,8 @@ def _parse_mode(client, command, actor, args):
     chanmodes = client.server.features.get('CHANMODES')
     if not chanmodes:
         # Defaults from RFC 2811
-        argument_modes = set("beIkl")
+        list_modes = set("beI")
+        always_arg_modes = set()
         set_arg_modes = set("kl")
         toggle_modes = set("aimnqpsrt")
     else:
@@ -635,7 +636,7 @@ def _parse_mode(client, command, actor, args):
         always_arg_modes = set(chanmodes[1])
         set_arg_modes = set(chanmodes[2])
         toggle_modes = set(chanmodes[3])
-        argument_modes = list_modes | always_arg_modes | set_arg_modes
+    argument_modes = list_modes | always_arg_modes | set_arg_modes
 
     tokens = args.split()
     while tokens:
