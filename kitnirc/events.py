@@ -75,6 +75,7 @@ NUMERIC_EVENTS = {
     "331": "NOTOPIC",
     "332": "CURRENTTOPIC",
     "333": "TOPICINFO",
+    "335": "WHOISBOT", # Aaeriele 2013-06-16
     "341": "INVITING",
     "342": "SUMMONING",
     "346": "INVITELIST",
