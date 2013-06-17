@@ -698,9 +698,9 @@ def _parse_mode(client, command, actor, args):
             client.dispatch_event("MODE", actor, channel, op, mode, argument)
 
 
-@parser('WHOISUSER', 'WHOISCHANNELS', 'WHOISIDLE', 'WHOISSERVER',
-        'WHOISOPERATOR', 'WHOISACCOUNT', 'WHOISBOT', 'WHOISREGNICK',
-        'ENDOFWHOIS')
+@parser("WHOISUSER", "WHOISCHANNELS", "WHOISIDLE", "WHOISSERVER",
+        "WHOISOPERATOR", "WHOISACCOUNT", "WHOISBOT", "WHOISREGNICK",
+        "ENDOFWHOIS")
 def _parse_whois(client, command, actor, args):
     """Parse the content responses from a WHOIS query.
 
@@ -708,52 +708,79 @@ def _parse_whois(client, command, actor, args):
     the full contents of which are then sent as the argument to the WHOIS
     event dispatched when an ENDOFWHOIS line is received from the server.
     """
-    _, _, args = args.partition(' ') # Strip off recipient, we know it's us
-    nick, _, args = args.partition(' ')
-    if client.server._whois.get('nick') != nick:
-        client.server._whois = {'nick': nick}
+    _, _, args = args.partition(" ") # Strip off recipient, we know it"s us
+    nick, _, args = args.partition(" ")
+    if client.server._whois.get("nick") != nick:
+        client.server._whois = {"nick": nick}
     response = client.server._whois
 
-    if command == 'WHOISUSER':
-        first, _, response['realname'] = args.partition(':')
-        response['username'], response['host'] = first.split()[:2]
+    if command == "WHOISUSER":
+        first, _, response["realname"] = args.partition(":")
+        response["username"], response["host"] = first.split()[:2]
         return
 
-    if command == 'WHOISISSERVER':
-        response['server'], _, response['serverinfo'] = args.partition(' :')
+    if command == "WHOISISSERVER":
+        response["server"], _, response["serverinfo"] = args.partition(" :")
         return
 
-    if command == 'WHOISOPERATOR':
-        response['oper'] = True
+    if command == "WHOISOPERATOR":
+        response["oper"] = True
         return
 
-    if command == 'WHOISIDLE':
-        response['idle'], _, _ = args.partition(' :')
-        response['idle'] = int(response['idle'])
+    if command == "WHOISIDLE":
+        response["idle"], _, _ = args.partition(" :")
+        response["idle"] = int(response["idle"])
         return
 
-    if command == 'WHOISCHANNELS':
-        modes = ''.join(client._get_prefixes())
+    if command == "WHOISCHANNELS":
+        modes = "".join(client._get_prefixes())
         print repr(modes)
         channels = args.lstrip(":").split()
-        response['channels'] = dict(
-            (chan.lstrip(modes), chan[0] if chan[0] in modes else '')
+        response["channels"] = dict(
+            (chan.lstrip(modes), chan[0] if chan[0] in modes else "")
             for chan in channels)
         return
 
-    if command == 'WHOISACCOUNT':
-        response['account'], _, _ = args.partition(' :')
+    if command == "WHOISACCOUNT":
+        response["account"], _, _ = args.partition(" :")
         return
 
-    if command == 'WHOISBOT':
-        response['bot'] = True
+    if command == "WHOISBOT":
+        response["bot"] = True
         return
 
-    if command == 'WHOISREGNICK':
-        response['registered'] = True
+    if command == "WHOISREGNICK":
+        response["registered"] = True
         return
 
-    if command == 'ENDOFWHOIS':
-        client.dispatch_event('WHOIS', response)
+    if command == "ENDOFWHOIS":
+        client.dispatch_event("WHOIS", response)
+
+
+@parser("NICK")
+def _parse_nick(client, command, actor, args):
+    """Parse a NICK response, update state, and dispatch events.
+
+    Note: this function dispatches both a NICK event and also one or more
+    MEMBERS events for each channel the user that changed nick was in.
+    """
+    old_nick, _, _ = actor.partition('!')
+    new_nick = args
+
+    if old_nick == client.user.nick:
+        client.user.nick = new_nick
+
+    modified_channels = set()
+    for channel in client.server.channels.itervalues():
+        user = channel.members.get(old_nick)
+        if user:
+            user.nick = new_nick
+            channel.members[new_nick] = user
+            del channel.members[old_nick]
+            modified_channels.add(channel.name)
+
+    client.dispatch_event("NICK", old_nick, new_nick)
+    for channel in modified_channels:
+        client.dispatch_event("MEMBERS", channel)
 
 # vim: set ts=4 sts=4 sw=4 et:
