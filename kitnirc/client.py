@@ -699,7 +699,8 @@ def _parse_mode(client, command, actor, args):
 
 
 @parser('WHOISUSER', 'WHOISCHANNELS', 'WHOISIDLE', 'WHOISSERVER',
-        'WHOISOPERATOR', 'WHOISACCOUNT', 'WHOISBOT', 'ENDOFWHOIS')
+        'WHOISOPERATOR', 'WHOISACCOUNT', 'WHOISBOT', 'WHOISREGNICK',
+        'ENDOFWHOIS')
 def _parse_whois(client, command, actor, args):
     """Parse the content responses from a WHOIS query.
 
@@ -746,6 +747,10 @@ def _parse_whois(client, command, actor, args):
 
     if command == 'WHOISBOT':
         response['bot'] = True
+        return
+
+    if command == 'WHOISREGNICK':
+        response['registered'] = True
         return
 
     if command == 'ENDOFWHOIS':

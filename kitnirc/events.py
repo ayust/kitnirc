@@ -57,6 +57,7 @@ NUMERIC_EVENTS = {
     "303": "ISON",
     "305": "UNAWAY",
     "306": "NOWAWAY",
+    "307": "WHOISREGNICK", # Aaeriele 2013-06-16
     "311": "WHOISUSER",
     "312": "WHOISSERVER",
     "313": "WHOISOPERATOR",
