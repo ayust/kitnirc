@@ -316,6 +316,10 @@ class Client(object):
         _log.info("Joining channel %s ...", target)
         self.send("JOIN", target, *([key] if key else []))
 
+    def invite(self, channel, nick):
+        """Attempt to invite a user to a channel."""
+        self.send("INVITE", nick, channel)
+
     def part(self, target, message=None):
         """Part a channel."""
         if target not in self.server.channels:
