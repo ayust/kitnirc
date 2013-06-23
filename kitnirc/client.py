@@ -8,8 +8,6 @@ from kitnirc.user import User
 _log = logging.getLogger(__name__)
 
 
-
-
 class Channel(object):
     """Information about an IRC channel.
 
