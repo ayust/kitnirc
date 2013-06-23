@@ -149,6 +149,8 @@ class Client(object):
             "WHOIS": [],
             # Fires when a channel topic changes
             "TOPIC": [],
+            # Fires when someone invites us to a channel
+            "INVITE": [],
         }
 
     def add_handler(self, event, handler):
@@ -860,5 +862,12 @@ def _parse_nick(client, command, actor, args):
     client.dispatch_event("NICK", old_nick, new_nick)
     for channel in modified_channels:
         client.dispatch_event("MEMBERS", channel)
+
+
+@parser("INVITE")
+def _parse_invite(client, command, actor, args):
+    """Parse an INVITE and dispatch an event."""
+    channel = args.rpartition(" ")
+    client.dispatch_event("INVITE", actor, channel)
 
 # vim: set ts=4 sts=4 sw=4 et:
