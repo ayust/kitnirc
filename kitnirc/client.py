@@ -116,33 +116,39 @@ class Client(object):
             ###### CONNECTION-LEVEL EVENTS ######
 
             # Fires after the client's socket connects.
-            'CONNECTED': [on_connect],
+            "CONNECTED": [on_connect],
             # Fires every time a line is received
-            'LINE': [on_line],
+            "LINE": [on_line],
             # Fires whenever a line isn't handled by LINE
-            'RAWLINE': [],
+            "RAWLINE": [],
 
             ###### IRC-LEVEL EVENTS ######
 
             # Fires when receiving the 001 RPL_WELCOME message upon
             # being recognized as a valid user by the IRC server.
-            'WELCOME': [],
+            "WELCOME": [],
             # Fires when a privmsg is received
-            'PRIVMSG': [], # actor, recipien
+            "PRIVMSG": [], # actor, recipien
             # Fires when a notice is received
-            'NOTICE': [],
+            "NOTICE": [],
             # Fires when a complete MOTD is received
-            'MOTD': [],
+            "MOTD": [],
             # Fires when a user joins a channel
-            'JOIN': [],
+            "JOIN": [],
             # Fires when a user parts a channel
-            'PART': [],
+            "PART": [],
+            # Fires when a user quits the server
+            "QUIT": [],
             # Fires when a user is kicked from a channel
-            'KICK': [],
+            "KICK": [],
             # Fires when the list of users in a channel has been updated
-            'MEMBERS': [],
+            "MEMBERS": [],
             # Fires whenever a mode change occurs
-            'MODE': [],
+            "MODE": [],
+            # Fires when a WHOIS response is complete
+            "WHOIS": [],
+            # Fires when a channel topic changes
+            "TOPIC": [],
         }
 
     def add_handler(self, event, handler):
@@ -239,7 +245,7 @@ class Client(object):
                 raise
 
             lines = self._buffer.split("\n")
-            self._buffer = lines.pop() # We may still need to more of the last
+            self._buffer = lines.pop() # Last line may not have been fully read
             for line in lines:
                 line = line.rstrip("\r")
                 _log.debug("%s --> %s", self.server.host, line)
