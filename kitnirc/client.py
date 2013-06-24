@@ -115,6 +115,10 @@ class Client(object):
 
             ###### CONNECTION-LEVEL EVENTS ######
 
+            # Fires while the client is connecting, when a password should be
+            # supplied. If nothing supplies a password, the password argument
+            # of connect() will be used (if set).
+            "PASSWORD": [],
             # Fires after the client's socket connects.
             "CONNECTED": [on_connect],
             # Fires every time a line is received
@@ -211,7 +215,10 @@ class Client(object):
 
         _log.info("Connected to %s.", self.server.host)
 
-        if password:
+        # Allow an event handler to supply a password instead, if it wants
+        suppress_password = self.dispatch_event('PASSWORD')
+
+        if password and not suppress_password:
             # We bypass our own send() function here to avoid logging passwords
             _log.info("Sending server password.")
             self.socket.send("PASS %s\r\n" % password)
