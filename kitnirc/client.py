@@ -103,8 +103,11 @@ class Client(object):
     additional functionality (e.g. tracking of nicks and channels).
     """
 
-    def __init__(self, host, port=6667):
-        self.server = Host(host, port)
+    def __init__(self, host=None, port=6667):
+        if host:
+            self.server = Host(host, port)
+        else:
+            self.server = None
         self.connected = False
         self.socket = None
         self._stop = False
@@ -196,13 +199,22 @@ class Client(object):
             _log.exception("Error while processing event '%s'", event)
 
         # Fall back to the RAWLINE event if LINE can't process it.
-        if event == 'LINE':
-            return self.dispatch_event('RAWLINE', *args)
+        if event == "LINE":
+            return self.dispatch_event("RAWLINE", *args)
 
         return False
 
-    def connect(self, nick, username=None, realname=None, password=None):
-        """Connect to the server using the specified credentials."""
+    def connect(self, nick, username=None, realname=None, password=None,
+                host=None, port=6667):
+        """Connect to the server using the specified credentials.
+
+        Note: if host is specified here, both the host and port arguments
+        passed to Client.__init__ will be ignored."""
+        if host:
+            self.server = Host(host, port)
+        if self.server is None:
+            _log.error("Can't connect() without a host specified.")
+            return
         self.user = User(nick)
         self.user.username = username or nick
         self.user.realname = realname or username or nick
@@ -216,7 +228,7 @@ class Client(object):
         _log.info("Connected to %s.", self.server.host)
 
         # Allow an event handler to supply a password instead, if it wants
-        suppress_password = self.dispatch_event('PASSWORD')
+        suppress_password = self.dispatch_event("PASSWORD")
 
         if password and not suppress_password:
             # We bypass our own send() function here to avoid logging passwords
