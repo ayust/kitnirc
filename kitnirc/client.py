@@ -324,6 +324,22 @@ class Client(object):
         """Send a message to a user or channel."""
         self.send("PRIVMSG", target, ":" + message)
 
+    def reply(self, incoming, user, message):
+        """Replies to a user in a given channel or PM.
+
+        If the specified incoming is a user, simply sends a PM to user.
+        If the specified incoming is a channel, prefixes the message with the
+        user's nick and sends it to the channel.
+
+        This is specifically useful in creating responses to commands that can
+        be used in either a channel or in a PM, and responding to the person
+        who invoked the command.
+        """
+        if isinstance(incoming, User):
+            self.msg(user, message)
+        else:
+            self.msg(incoming, "%s: %s" % (user, message))
+
     def notice(self, target, message):
         """Send a NOTICE to a user or channel."""
         self.send("NOTICE", target, ":" + message)
