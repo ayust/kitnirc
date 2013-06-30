@@ -12,13 +12,16 @@ def is_admin(controller, client, actor):
     """Used to determine whether someone issuing a command is an admin.
 
     By default, checks to see if there's a line of the type nick=host that
-    matches the command's actor in the [admins] section of the config file.
+    matches the command's actor in the [admins] section of the config file,
+    or a key that matches the entire mask (e.g. "foo@bar" or "foo@bar=1").
     """
     config = controller.config
     if not config.has_section("admins"):
         return False
-    for nick,host in config.items("admins"):
-        if actor.nick == nick and actor.host == host:
+    for key,val in config.items("admins"):
+        if actor == User(key):
+            return True
+        if actor.nick == key and actor.host == val:
             return True
     return False
 

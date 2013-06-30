@@ -190,7 +190,8 @@ class Controller(object):
         else:
             self.config_path = config_path
 
-        config = ConfigParser.SafeConfigParser(self.DEFAULT_SUBSTITUTIONS)
+        config = ConfigParser.SafeConfigParser(self.DEFAULT_SUBSTITUTIONS,
+                                               allow_no_value=True)
         self.initialize_config(config)
         try:
             with open(config_path) as f:
