@@ -21,6 +21,12 @@ class Channel(object):
         self.members = {}
         self.modes = {}
 
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return "kitnirc.client.Channel(%r)" % self.name
+
     def add_user(self, user):
         """Adds a user to the channel."""
         if not isinstance(user, User):
@@ -79,6 +85,12 @@ class Host(object):
         self.version = None
         self.created = None
 
+    def __str__(self):
+        return self.host
+
+    def __repr__(self):
+        return "kitnirc.client.Host(%r, %r)" % (self.host, self.port)
+
     def add_channel(self, name):
         if name in self.channels:
             _log.warning("Ignoring request to add a channel that has already "
@@ -135,7 +147,7 @@ class Client(object):
             # being recognized as a valid user by the IRC server.
             "WELCOME": [],
             # Fires when a privmsg is received
-            "PRIVMSG": [], # actor, recipien
+            "PRIVMSG": [], # actor, recipient
             # Fires when a notice is received
             "NOTICE": [],
             # Fires when a complete MOTD is received
@@ -554,7 +566,11 @@ def parser(*events):
 def _parse_msg(client, command, actor, args):
     """Parse a PRIVMSG or NOTICE and dispatch the corresponding event."""
     recipient, _, message = args.partition(' :')
-    recipient = User(recipient)
+    chantypes = client.server.features.get("CHANTYPES", "#")
+    if recipient[0] in chantypes:
+        recipient = client.server.channels.get(recipient) or recipient
+    else:
+        recipient = User(recipient)
     client.dispatch_event(command, actor, recipient, message)
 
 
