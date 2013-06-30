@@ -91,21 +91,25 @@ class Host(object):
     def __repr__(self):
         return "kitnirc.client.Host(%r, %r)" % (self.host, self.port)
 
-    def add_channel(self, name):
-        if name in self.channels:
+    def add_channel(self, channel):
+        if not isinstance(channel, Channel):
+            channel = Channel(channel)
+        if channel.name in self.channels:
             _log.warning("Ignoring request to add a channel that has already "
-                         "been added: '%s'", name)
+                         "been added: '%s'", channel)
             return
-        self.channels[name] = Channel(name)
-        _log.info("Entered channel %s.", name)
+        self.channels[channel.name] = channel
+        _log.info("Entered channel %s.", channel)
 
-    def remove_channel(self, name):
-        if name not in self.channels:
+    def remove_channel(self, channel):
+        if isinstance(channel, Channel):
+            channel = channel.name
+        if channel not in self.channels:
             _log.warning("Ignoring request to remove a channel that hasn't "
-                         "been added: '%s'", name)
+                         "been added: '%s'", channel)
             return
-        del self.channels[name]
-        _log.info("Left channel %s.", name)
+        del self.channels[channel]
+        _log.info("Left channel %s.", channel)
 
 
 class Client(object):
@@ -598,7 +602,8 @@ def _parse_join(client, command, actor, args):
     if actor.nick == client.user.nick:
         client.server.add_channel(channel)
         client.user.host = actor.host # now we know our host per the server
-    client.server.channels[channel].add_user(actor)
+    channel = client.server.channels[channel]
+    channel.add_user(actor)
     client.dispatch_event("JOIN", actor, channel)
     if actor.nick != client.user.nick:
         # If this is us joining, the namreply will trigger this instead
@@ -615,7 +620,8 @@ def _parse_part(client, command, actor, args):
     """
     actor = User(actor)
     channel, _, message = args.partition(' :')
-    client.server.channels[channel].remove_user(actor)
+    channel = client.server.channels[channel]
+    channel.remove_user(actor)
     if actor.nick == client.user.nick:
         client.server.remove_channel(channel)
     client.dispatch_event("PART", actor, channel, message)
@@ -636,7 +642,7 @@ def _parse_quit(client, command, actor, args):
     for chan in client.server.channels.itervalues():
         if actor.nick in chan.members:
             chan.remove(actor)
-            client.dispatch_event("MEMBERS", chan.name)
+            client.dispatch_event("MEMBERS", chan)
 
 
 @parser("KICK")
@@ -650,9 +656,10 @@ def _parse_kick(client, command, actor, args):
     actor = User(actor)
     args, _, message = args.partition(' :')
     channel, target = args.split()
+    channel = client.server.channels[channel]
+    channel.remove_user(target)
     target = User(target)
-    client.server.channels[channel].remove_user(target)
-    if target.nic == client.user.nick:
+    if target.nick == client.user.nick:
         client.server.remove_channel(channel)
     client.dispatch_event("KICK", actor, target, channel, message)
     client.dispatch_event("MEMBERS", channel)
@@ -662,7 +669,8 @@ def _parse_kick(client, command, actor, args):
 def _parse_topic(client, command, actor, args):
     """Parse a TOPIC and update channel state, then dispatch a TOPIC event."""
     channel, _, topic = args.partition(" :")
-    client.server.channels[channel].topic = topic or None
+    channel = client.server.channels[channel]
+    channel.topic = topic or None
     if actor:
         actor = User(actor)
     client.dispatch_event("TOPIC", actor, channel, topic)
@@ -750,6 +758,7 @@ def _parse_endofnames(client, command, actor, args):
     """Parse an ENDOFNAMES and dispatch a NAMES event for the channel."""
     args = args.split(" :", 1)[0] # Strip off human-readable message
     _, _, channel = args.rpartition(' ')
+    channel = client.server.channels.get(channel) or channel
     client.dispatch_event('MEMBERS', channel)
 
 
@@ -769,7 +778,7 @@ def _parse_mode(client, command, actor, args):
                     client.user.modes.add(mode)
                 else:
                     client.user.modes.discard(mode)
-                client.dispatch_event("MODE", actor, channel, op, mode, None)
+                client.dispatch_event("MODE", actor, client.user, op, mode, None)
         return
 
     # channel-specific modes
@@ -810,7 +819,7 @@ def _parse_mode(client, command, actor, args):
 
             # list-type modes (bans+exceptions, invite masks) aren't stored,
             # but do generate MODE events.
-            client.dispatch_event("MODE", actor, channel, op, mode, argument)
+            client.dispatch_event("MODE", actor, chan, op, mode, argument)
 
 
 @parser("WHOISUSER", "WHOISCHANNELS", "WHOISIDLE", "WHOISSERVER",
