@@ -641,7 +641,8 @@ def _parse_part(client, command, actor, args):
     if actor.nick == client.user.nick:
         client.server.remove_channel(channel)
     client.dispatch_event("PART", actor, channel, message)
-    client.dispatch_event("MEMBERS", channel)
+    if actor.nick == client.user.nick:
+        client.dispatch_event("MEMBERS", channel)
 
 
 @parser("QUIT")
