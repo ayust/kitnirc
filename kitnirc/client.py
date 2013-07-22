@@ -338,7 +338,7 @@ class Client(object):
         if isinstance(incoming, User):
             self.msg(user, message)
         else:
-            self.msg(incoming, "%s: %s" % (user, message))
+            self.msg(incoming, "%s: %s" % (user.nick, message))
 
     def notice(self, target, message):
         """Send a NOTICE to a user or channel."""
