@@ -80,14 +80,18 @@ class AdminModule(Module):
     def join(self, client, args):
         if not args:
             return False
-        client.join(args[0])
-        return True
+        if client.join(args[0]):
+            return True
+        else:
+            return False
 
     def part(self, client, args):
         if not args:
             return False
-        client.part(args[0])
-        return True
+        if client.part(args[0]):
+            return True
+        else:
+            return False
 
     def quit(self, client, args):
         # We immediately disconnect, so no reply
