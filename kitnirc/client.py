@@ -338,7 +338,7 @@ class Client(object):
         if isinstance(incoming, User):
             self.msg(user, message)
         else:
-            self.msg(incoming, "%s: %s" % (user, message))
+            self.msg(incoming, "%s: %s" % (user.nick, message))
 
     def notice(self, target, message):
         """Send a NOTICE to a user or channel."""
@@ -363,15 +363,16 @@ class Client(object):
             # "JOIN 0" command which actually removes you from all channels
             _log.warning("Refusing to join channel that does not start "
                          "with one of '%s': %s", chantypes, target)
-            return
+            return False
 
         if target in self.server.channels:
             _log.warning("Ignoring request to join channel '%s' because we "
                          "are already in that channel.", target)
-            return
+            return False
 
         _log.info("Joining channel %s ...", target)
         self.send("JOIN", target, *([key] if key else []))
+        return True
 
     def invite(self, channel, nick):
         """Attempt to invite a user to a channel."""
@@ -383,7 +384,9 @@ class Client(object):
             _log.warning("Ignoring request to part channel '%s' because we "
                          "are not in that channel.", target)
             return
+            return False
         self.send("PART", target, *([message] if message else []))
+        return True
 
     def quit(self, message=None):
         """Quit the server (and stop the event loop).
