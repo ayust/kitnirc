@@ -21,7 +21,8 @@ class HealthcheckModule(Module):
     [healthcheck] configuration section.
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super(HealthcheckModule, self).__init__(*args, **kwargs)
         config = self.controller.config
 
         if config.has_option("healthcheck", "delay"):
