@@ -5,7 +5,7 @@ import socket
 try:
     import ssl as _ssl
 except ImportError:
-    pass # No SSL support
+    _ssl = None # No SSL support
 
 from kitnirc.events import NUMERIC_EVENTS
 from kitnirc.user import User
