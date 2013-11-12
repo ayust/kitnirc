@@ -7,7 +7,9 @@ monotony of writing IRC bots without sacrificing flexibility.
 Usage
 -----
 
-See `example.py` in the root directory of the repository for basic usage.
+See `example.py` in the root directory of the repository for basic usage,
+and [Getting Started](https://github.com/ayust/kitnirc/wiki/Getting-Started)
+for introductory documentation.
 
 License
 -------
