@@ -252,7 +252,7 @@ class Client(object):
             ssl_kwargs = ssl if isinstance(ssl, dict) else {}
             self.socket = _ssl.wrap_socket(self.socket, **ssl_kwargs)
         elif ssl:
-            _log.error("SSL requested by no SSL support available!")
+            _log.error("SSL requested but no SSL support available!")
             return
 
         self.socket.connect((self.server.host, self.server.port))
