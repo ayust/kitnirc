@@ -1,7 +1,11 @@
 import logging
 import re
 import socket
-import ssl
+
+try:
+    import ssl as _ssl
+except ImportError:
+    pass # No SSL support
 
 from kitnirc.events import NUMERIC_EVENTS
 from kitnirc.user import User
@@ -244,9 +248,12 @@ class Client(object):
         _log.info("Connecting to %s as %s ...", self.server.host, nick)
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if ssl:
+        if ssl and _ssl:
             ssl_kwargs = ssl if isinstance(ssl, dict) else {}
-            self.socket = ssl.wrap_socket(self.socket, **ssl_kwargs)
+            self.socket = _ssl.wrap_socket(self.socket, **ssl_kwargs)
+        elif ssl:
+            _log.error("SSL requested by no SSL support available!")
+            return
 
         self.socket.connect((self.server.host, self.server.port))
         self.connected = True
