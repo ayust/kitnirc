@@ -72,7 +72,7 @@ class HealthcheckModule(Module):
             time.sleep(1)
 
     @Module.handle("LINE")
-    def activity(self, line):
+    def activity(self, client, line):
         self.last_activity = time.clock()
 
 
