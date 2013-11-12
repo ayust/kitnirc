@@ -1,6 +1,7 @@
 import logging
 import re
 import socket
+import ssl
 
 from kitnirc.events import NUMERIC_EVENTS
 from kitnirc.user import User
@@ -221,11 +222,16 @@ class Client(object):
         return False
 
     def connect(self, nick, username=None, realname=None, password=None,
-                host=None, port=6667):
+                host=None, port=6667, ssl=None):
         """Connect to the server using the specified credentials.
 
         Note: if host is specified here, both the host and port arguments
-        passed to Client.__init__ will be ignored."""
+        passed to Client.__init__ will be ignored.
+        
+        If the 'ssl' argument is boolean true, will use SSL. If it is a
+        dictionary, will both use SSL and pass the contents as kwargs to
+        the ssl.wrap_socket() call.
+        """
         if host:
             self.server = Host(host, port)
         if self.server is None:
@@ -238,6 +244,10 @@ class Client(object):
         _log.info("Connecting to %s as %s ...", self.server.host, nick)
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if ssl:
+            ssl_kwargs = ssl if isinstance(ssl, dict) else {}
+            self.socket = ssl.wrap_socket(self.socket, **ssl_kwargs)
+
         self.socket.connect((self.server.host, self.server.port))
         self.connected = True
 
