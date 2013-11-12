@@ -352,6 +352,8 @@ class Client(object):
         be used in either a channel or in a PM, and responding to the person
         who invoked the command.
         """
+        if not isinstance(user, User):
+            user = User(user)
         if isinstance(incoming, User):
             self.msg(user, message)
         else:
