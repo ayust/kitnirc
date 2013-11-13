@@ -950,7 +950,7 @@ def _parse_nick(client, command, actor, args):
 @parser("INVITE")
 def _parse_invite(client, command, actor, args):
     """Parse an INVITE and dispatch an event."""
-    channel = args.rpartition(" ")
-    client.dispatch_event("INVITE", actor, channel)
+    target, _, channel = args.rpartition(" ")
+    client.dispatch_event("INVITE", actor, target, channel)
 
 # vim: set ts=4 sts=4 sw=4 et:
