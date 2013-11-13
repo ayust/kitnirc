@@ -411,7 +411,7 @@ class Client(object):
         """Quit the server (and stop the event loop).
 
         This actually just calls .disconnect() with the provided message."""
-        self.disconnect(message)
+        self.disconnect(message or "Bye")
 
     def kick(self, channel, nick, message=None):
         """Attempt to kick a user from a channel.
