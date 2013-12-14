@@ -4,6 +4,8 @@ import socket
 
 try:
     import ssl as _ssl
+    _hush_pyflakes = [_ssl]
+    del _hush_pyflakes
 except ImportError:
     _ssl = None # No SSL support
 
@@ -216,8 +218,8 @@ class Client(object):
                     # Returning a truthy value supresses further handlers
                     # for this event.
                     return True
-        except Exception:
-            _log.exception("Error while processing event '%s'", event)
+        except Exception as e:
+            _log.exception("Error while processing event '%s': %r", event, e)
 
         # Fall back to the RAWLINE event if LINE can't process it.
         if event == "LINE":
@@ -231,7 +233,7 @@ class Client(object):
 
         Note: if host is specified here, both the host and port arguments
         passed to Client.__init__ will be ignored.
-        
+
         If the 'ssl' argument is boolean true, will use SSL. If it is a
         dictionary, will both use SSL and pass the contents as kwargs to
         the ssl.wrap_socket() call.
