@@ -64,7 +64,7 @@ def main():
 
     def config_or_none(section, value, integer=False, boolean=False):
         """Helper function to get values that might not be set."""
-        if controller.config.has_value(section, value):
+        if controller.config.has_option(section, value):
             if integer:
                 return controller.config.getint(section, value)
             elif boolean:
@@ -84,8 +84,10 @@ def main():
         argparse.ArgumentParser.error(
             "Nick must be specified if not in config file.")
 
-    # KitnIRC's default client will use port 6667 if nothing else is specified
-    port = args.port or config_or_none("server", "port", integer=True)
+    # KitnIRC's default client will use port 6667 if nothing else is specified,
+    # but since we want to potentially specify something else, we add that
+    # fallback here ourselves.
+    port = args.port or config_or_none("server", "port", integer=True) or 6667
     ssl = args.ssl or config_or_none("server", "ssl", boolean=True)
     password = args.password or config_or_none("server", "password")
     username = args.username or config_or_none("server", "username") or nick,
