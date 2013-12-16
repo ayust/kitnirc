@@ -33,8 +33,16 @@ class Cron(object):
                 pass
 
             # ? can be used to specify "a single random value"
-            if item == '?':
-                values.add(random.randint(0, count-1))
+            if item.startswith('?'):
+                # With an optional /X to specify "every Xth value,
+                # offset randomly"
+                _, _, divisor = item.partition("/")
+                if divisor:
+                    divisor = int(divisor)
+                    offset = random.randint(0, divisor-1)
+                    values.update(range(offset, count, divisor))
+                else:
+                    values.add(random.randint(0, count-1))
                 continue
 
             # * can be used to specify "all values"
