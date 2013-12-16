@@ -194,7 +194,7 @@ class Client(object):
             my_client.event_handlers['PRIVMSG'].insert(0, my_handler)
         """
         if event not in self.event_handlers:
-            _log.warning("Adding event handler for unknown event %s.")
+            _log.info("Adding event handler for new event %s.", event)
             self.event_handlers[event] = [handler]
         else:
             self.event_handlers[event].append(handler)

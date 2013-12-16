@@ -135,14 +135,18 @@ class Controller(object):
     def start(self):
         """Begin listening for events from the Client and acting upon them.
 
-        Note: If configuration has not already been loaded, it will be
-        loaded before starting to listen for events. Calling this method
-        without having specified and/or loaded a configuration will
-        result in completely default values being used.
+        Note: If configuration has not already been loaded, it will be loaded
+        immediately before starting to listen for events. Calling this method
+        without having specified and/or loaded a configuration will result in
+        completely default values being used.
+
+        After all modules for this controller are loaded, the STARTUP event
+        will be dispatched.
         """
         if not self.config and self.config_path is not None:
             self.load_config()
         self.running = True
+        self.process_event("STARTUP", self.client, ())
 
     def process_event(self, event, client, args):
         """Process an incoming event.
@@ -153,6 +157,7 @@ class Controller(object):
         Returns True if a module inhibited propagation, otherwise False.
         """
         if not self.running:
+            _log.debug("Ignoring '%s' event - controller not running.", event)
             return
 
         # We keep a copy of the state of loaded modules before this event,
@@ -253,7 +258,8 @@ class Controller(object):
         if modules_failure:
             _log.error("These modules failed to load: %s", modules_failure)
 
-        for module_name,module in self.loaded_modules.iteritems():
+        for module_name in self.module_ordering:
+            module = self.loaded_modules[module_name]
             module.start(reloading=(module_name in old_modules))
 
         return not modules_failure
