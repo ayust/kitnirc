@@ -175,8 +175,10 @@ class CronModule(Module):
         Timespecs are strings in the following formats:
 
             Plain integer - specifies that exact value for the unit.
-            "?" - specifies a random value from 0 to the unit max.
-            "*" - specifies all values for the unix from 0 to max.
+            "?"   - specifies a random value from 0 to the unit max.
+            "?/X" - specifies all multiples of X for this unit, randomly offset
+                    by a fixed amount (e.g. ?/15 might become 4,19,34,49).
+            "*"   - specifies all values for the unix from 0 to max.
             "*/X" - specifies all multiples of X for the unit.
 
         Any number of these can be combined in a comma-separated list.
