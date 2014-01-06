@@ -33,13 +33,15 @@ class User(object):
     def __eq__(self, value):
         if isinstance(value, User):
             if value.host is None or self.host is None:
-                return value.nick == self.nick
-            return value.nick == self.nick and value.host == self.host
+                return value.nick.lower() == self.nick.lower()
+            return (value.nick.lower() == self.nick.lower() and
+                    value.host.lower() == self.host.lower())
         elif isinstance(value, str):
             user = User(value)
             if "@" not in value:
-                return user.nick == self.nick
-            return user.nick == self.nick and user.host == self.host
+                return user.nick.lower() == self.nick.lower()
+            return (user.nick.lower() == self.nick.lower() and
+                    user.host.lower() == self.host.lower())
         else:
             raise TypeError("Cannot compare User and %s" % type(value))
 
