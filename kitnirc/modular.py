@@ -197,6 +197,8 @@ class Controller(object):
 
         config = ConfigParser.SafeConfigParser(self.DEFAULT_SUBSTITUTIONS,
                                                allow_no_value=True)
+        # Avoid the configparser automatically lowercasing keys
+        config.optionxform = str
         self.initialize_config(config)
         try:
             with open(config_path) as f:

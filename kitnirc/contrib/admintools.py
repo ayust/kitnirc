@@ -23,7 +23,7 @@ def is_admin(controller, client, actor):
         if actor == User(key):
             logging.debug("is_admin: %r matches admin %r", actor, key)
             return True
-        if actor.nick == key and actor.host == val:
+        if actor.nick.lower() == key.lower() and actor.host.lower() == val.lower():
             logging.debug("is_admin: %r matches admin %r=%r", actor, key, val)
             return True
     logging.debug("is_admin: %r is not an admin.", actor)
@@ -80,7 +80,7 @@ class AdminModule(Module):
             client.reply(recipient, actor, "Okay.")
         elif result is False:
             client.reply(recipient, actor, "Sorry, try again.")
-            
+
         # Suprress further handling of the PRIVMSG event.
         return True
 
