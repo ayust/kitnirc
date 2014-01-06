@@ -17,12 +17,16 @@ def is_admin(controller, client, actor):
     """
     config = controller.config
     if not config.has_section("admins"):
+        logging.debug("Ignoring is_admin check - no [admins] config found.")
         return False
     for key,val in config.items("admins"):
         if actor == User(key):
+            logging.debug("is_admin: %r matches admin %r", actor, key)
             return True
         if actor.nick == key and actor.host == val:
+            logging.debug("is_admin: %r matches admin %r=%r", actor, key, val)
             return True
+    logging.debug("is_admin: %r is not an admin.", actor)
     return False
 
 
