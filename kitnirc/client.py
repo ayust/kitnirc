@@ -682,7 +682,7 @@ def _parse_quit(client, command, actor, args):
     client.dispatch_event("QUIT", actor, message)
     for chan in client.server.channels.itervalues():
         if actor.nick in chan.members:
-            chan.remove(actor)
+            chan.remove_user(actor)
             client.dispatch_event("MEMBERS", chan)
 
 
