@@ -1,5 +1,5 @@
 import logging
-import sys
+import os
 import threading
 import time
 
@@ -65,7 +65,9 @@ class HealthcheckModule(Module):
             if elapsed > self.timeout:
                 _log.fatal("No incoming in last %d seconds - exiting.", elapsed)
                 logging.shutdown()
-                sys.exit(1)
+                # We use this instead of sys.exit because the latter just raises
+                # SystemExit in this thread, causing the thread to shut down.
+                os._exit(os.EX_IOERR)
             elif elapsed > self.delay:
                 self.controller.client.send("PING")
 
