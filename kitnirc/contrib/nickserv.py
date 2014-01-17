@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 import logging
 
 from kitnirc.modular import Module
@@ -19,16 +17,13 @@ class NickServModule(Module):
     @Module.handle("WELCOME")
     def register_nick(self, client, hostmask):
 
-        _log.info("Beginning automatic nick configuration...")
-        
         config = self.controller.config
 
         if config.has_option("nickserv", "password"):
+            _log.info("Identifiying with NickServ.")
             password = config.get("nickserv", "password")
             client.msg("NickServ", "IDENTIFY {}".format(password))
         else:
-            _log.info("No password found for nickserv.")
-
-        _log.info("Automatic nick configuration complete.")
+            _log.info("No password found.")
 
 module = NickServModule
