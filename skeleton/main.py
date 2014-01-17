@@ -90,7 +90,7 @@ def main():
     port = args.port or config_or_none("server", "port", integer=True) or 6667
     ssl = args.ssl or config_or_none("server", "ssl", boolean=True)
     password = args.password or config_or_none("server", "password")
-    username = args.username or config_or_none("server", "username") or nick,
+    username = args.username or config_or_none("server", "username") or nick
     realname = args.realname or config_or_none("server", "realname") or username
 
     controller.start()
