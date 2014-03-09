@@ -82,6 +82,10 @@ class Module(object):
         if handler:
             return handler(client, *args)
 
+    def trigger_event(self, event, client, args):
+        """Trigger a new event that will be dispatched to all modules."""
+        self.controller.process_event(event, client, args)
+
 
 class Controller(object):
     """A central module controller for a modular IRC bot.
