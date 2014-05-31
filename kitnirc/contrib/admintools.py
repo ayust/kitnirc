@@ -81,13 +81,13 @@ class AdminModule(Module):
         elif result is False:
             client.reply(recipient, actor, "Sorry, try again.")
 
-        # Suprress further handling of the PRIVMSG event.
+        # Suppress further handling of the PRIVMSG event.
         return True
 
     def join(self, client, args):
         if not args:
             return False
-        if client.join(*args):
+        if client.join(args[0], args[1] if len(args) > 1 else None):
             return True
         else:
             return False
