@@ -87,7 +87,7 @@ class AdminModule(Module):
     def join(self, client, args):
         if not args:
             return False
-        if client.join(args[0]):
+        if client.join(*args):
             return True
         else:
             return False
