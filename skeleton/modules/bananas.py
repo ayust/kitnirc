@@ -29,7 +29,7 @@ class BananasModule(Module):
 
     def stop(self, *args, **kwargs):
         super(BananasModule, self).stop(*args, **kwargs)
-        self.unreigster_commands(self.controller.client)
+        self.unregister_commands(self.controller.client)
 
     @Module.handle("BANANAS")
     def bananas(self, client, actor, recipient, *args):
