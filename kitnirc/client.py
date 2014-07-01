@@ -52,7 +52,7 @@ class Channel(object):
             user = User(user)
         if user.nick not in self.members:
             _log.warning("Ignoring request to remove user '%s' from channel "
-                         "'%s' because that user is already in the member "
+                         "'%s' because that user is already not in the member "
                          "list.", user, self.name)
             return
         del self.members[user.nick]
