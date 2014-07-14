@@ -445,7 +445,7 @@ class Client(object):
         chanmodes = self._get_chanmodes()
         list_modes, always_arg_modes, set_arg_modes, toggle_modes = chanmodes
         # User privilege levels are not always included in channel modes list
-        always_arg_modes |= set(client._get_prefixes().itervalues())
+        always_arg_modes |= set(self._get_prefixes().itervalues())
 
         def _arg_to_list(arg, argument_modes, toggle_modes):
             if not isinstance(arg, dict):
