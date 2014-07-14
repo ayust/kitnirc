@@ -401,7 +401,7 @@ class Client(object):
 
     def part(self, target, message=None):
         """Part a channel."""
-        if target not in self.server.channels:
+        if str(target) not in self.server.channels:
             _log.warning("Ignoring request to part channel '%s' because we "
                          "are not in that channel.", target)
             return
@@ -437,7 +437,7 @@ class Client(object):
 
         (Values for modes which do not take arguments are ignored.)
         """
-        if channel not in self.server.channels:
+        if str(channel) not in self.server.channels:
             _log.warning("Ignoring request to set modes in channel '%s' "
                          "because we are not in that channel.", channel)
             return
