@@ -152,7 +152,7 @@ class Controller(object):
         self.running = True
         self.process_event("STARTUP", self.client, ())
 
-    def process_event(self, event, client, args):
+    def process_event(self, event, client, args, force_dispatch=False):
         """Process an incoming event.
 
         Offers it to each module according to self.module_ordering,
@@ -173,7 +173,7 @@ class Controller(object):
         try:
             _log.debug("Controller is dispatching '%s' event", event)
             for module_name in self.module_ordering:
-                if module_name in self.loaded_on_this_event:
+                if module_name in self.loaded_on_this_event and not force_dispatch:
                     _log.debug("Not dispatching %s to '%s' because it was just "
                                "loaded (%r).", event, module_name,
                                self.loaded_on_this_event)
@@ -269,7 +269,7 @@ class Controller(object):
             module = self.loaded_modules[module_name]
             module.start(reloading=(module_name in old_modules))
             
-        self.process_event("STARTUP", self.client, ())
+        self.process_event("STARTUP", self.client, (), force_dispatch=True)
 
         return not modules_failure
 
