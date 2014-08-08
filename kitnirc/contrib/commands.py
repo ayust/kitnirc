@@ -49,7 +49,8 @@ class CommandsModule(Module):
             self.sigil = config.get("command", "sigil")
         else:
             self.sigil = None
-
+            
+        self.regenerate_prefixes()
         self.request_commands(self.controller.client)
 
     @Module.handle("STARTUP")
