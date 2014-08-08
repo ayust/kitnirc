@@ -50,7 +50,8 @@ class CommandsModule(Module):
         else:
             self.sigil = None
             
-        self.regenerate_prefixes()
+        if hasattr(self.controller.client, "user"):
+            self.regenerate_prefixes()
         self.request_commands(self.controller.client)
 
     @Module.handle("STARTUP")
