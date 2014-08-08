@@ -233,6 +233,7 @@ class Controller(object):
         3. Loads each module specified in the config
         4. Calls start() on each loaded module, with reloading set depending
            on whether the module was previously loaded or not
+        5. Dispatches the STARTUP event, since all modules have been rebooted
 
         Returns True if all modules reloaded successfully, otherwise False.
         """
@@ -267,6 +268,8 @@ class Controller(object):
         for module_name in self.module_ordering:
             module = self.loaded_modules[module_name]
             module.start(reloading=(module_name in old_modules))
+            
+        self.process_event("STARTUP", self.client, ())
 
         return not modules_failure
 
