@@ -168,7 +168,7 @@ class Controller(object):
         # and restore it when we're done. This lets us handle events that
         # result in other events being dispatched in a graceful manner.
         old_loaded = self.loaded_on_this_event
-        self.loaded_on_this_event = set(old_loaded or [])
+        self.loaded_on_this_event = set(old_loaded or []) if not force_dispatch else set()
 
         try:
             _log.debug("Controller is dispatching '%s' event", event)
