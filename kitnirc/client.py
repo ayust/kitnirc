@@ -659,7 +659,7 @@ def _parse_join(client, command, actor, args):
     if actor.nick == client.user.nick:
         client.server.add_channel(channel)
         client.user.host = actor.host # now we know our host per the server
-    channel = client.server.channels[channel]
+    channel = client.server.get_channel(channel)
     channel.add_user(actor)
     client.dispatch_event("JOIN", actor, channel)
     if actor.nick != client.user.nick:
@@ -859,7 +859,7 @@ def _parse_mode(client, command, actor, args):
                 argument, tokens = tokens[0], tokens[1:]
 
             if mode in user_modes:
-                user = client.server.channels[channel].members[argument]
+                user = client.server.get_channel(channel).members[argument]
                 if op == "+":
                     user.modes.add(mode)
                 else:
