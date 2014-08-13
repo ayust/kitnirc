@@ -23,7 +23,7 @@ class Channel(object):
     """
 
     def __init__(self, name):
-        self.name = name
+        self.name = name.lower()
         self.topic = None
         self.members = {}
         self.modes = {}
@@ -111,12 +111,27 @@ class Host(object):
     def remove_channel(self, channel):
         if isinstance(channel, Channel):
             channel = channel.name
+        channel = channel.lower()
         if channel not in self.channels:
             _log.warning("Ignoring request to remove a channel that hasn't "
                          "been added: '%s'", channel)
             return
         del self.channels[channel]
         _log.info("Left channel %s.", channel)
+        
+    def get_channel(self, channel):
+        if isinstance(channel, Channel):
+            channel = channel.name
+        channel = channel.lower()
+        if channel not in self.channels:
+            _log.warning("Ignoring request to get a channel that hasn't "
+                         "been added: '%s'", channel)
+            return None
+        return self.channels[channel]
+        
+    def in_channel(self, channel):
+        channel = str(channel).lower()
+        return channel in self.channels
 
 
 class Client(object):
@@ -386,7 +401,7 @@ class Client(object):
                          "with one of '%s': %s", chantypes, target)
             return False
 
-        if target in self.server.channels:
+        if self.server.in_channel(target):
             _log.warning("Ignoring request to join channel '%s' because we "
                          "are already in that channel.", target)
             return False
@@ -401,7 +416,7 @@ class Client(object):
 
     def part(self, target, message=None):
         """Part a channel."""
-        if str(target) not in self.server.channels:
+        if not self.server.in_channel(target):
             _log.warning("Ignoring request to part channel '%s' because we "
                          "are not in that channel.", target)
             return
@@ -437,7 +452,7 @@ class Client(object):
 
         (Values for modes which do not take arguments are ignored.)
         """
-        if str(channel) not in self.server.channels:
+        if not self.server.in_channel(channel):
             _log.warning("Ignoring request to set modes in channel '%s' "
                          "because we are not in that channel.", channel)
             return
@@ -614,7 +629,7 @@ def _parse_msg(client, command, actor, args):
     recipient, _, message = args.partition(' :')
     chantypes = client.server.features.get("CHANTYPES", "#")
     if recipient[0] in chantypes:
-        recipient = client.server.channels.get(recipient) or recipient
+        recipient = client.server.channels.get(recipient.lower()) or recipient
     else:
         recipient = User(recipient)
     client.dispatch_event(command, actor, recipient, message)
@@ -640,7 +655,7 @@ def _parse_join(client, command, actor, args):
         - MEMBERS, because the channel's members changed
     """
     actor = User(actor)
-    channel = args.lstrip(' :')
+    channel = args.lstrip(' :').lower()
     if actor.nick == client.user.nick:
         client.server.add_channel(channel)
         client.user.host = actor.host # now we know our host per the server
@@ -662,7 +677,7 @@ def _parse_part(client, command, actor, args):
     """
     actor = User(actor)
     channel, _, message = args.partition(' :')
-    channel = client.server.channels[channel]
+    channel = client.server.get_channel(channel)
     channel.remove_user(actor)
     if actor.nick == client.user.nick:
         client.server.remove_channel(channel)
@@ -699,7 +714,7 @@ def _parse_kick(client, command, actor, args):
     actor = User(actor)
     args, _, message = args.partition(' :')
     channel, target = args.split()
-    channel = client.server.channels[channel]
+    channel = client.server.get_channel(channel)
     channel.remove_user(target)
     target = User(target)
     if target.nick == client.user.nick:
@@ -712,7 +727,7 @@ def _parse_kick(client, command, actor, args):
 def _parse_topic(client, command, actor, args):
     """Parse a TOPIC and update channel state, then dispatch a TOPIC event."""
     channel, _, topic = args.partition(" :")
-    channel = client.server.channels[channel]
+    channel = client.server.get_channel(channel)
     channel.topic = topic or None
     if actor:
         actor = User(actor)
@@ -775,7 +790,7 @@ def _parse_namreply(client, command, actor, args):
     channelinfo, _, useritems = args.partition(' :')
     _, _, channel = channelinfo.rpartition(' ')  # channeltype channelname
 
-    c = client.server.channels.get(channel)
+    c = client.server.get_channel(channel)
     if not c:
         _log.warning("Ignoring NAMREPLY for channel '%s' which we are not in.",
             channel)
@@ -801,7 +816,7 @@ def _parse_endofnames(client, command, actor, args):
     """Parse an ENDOFNAMES and dispatch a NAMES event for the channel."""
     args = args.split(" :", 1)[0] # Strip off human-readable message
     _, _, channel = args.rpartition(' ')
-    channel = client.server.channels.get(channel) or channel
+    channel = client.server.get_channel(channel) or channel.lower()
     client.dispatch_event('MEMBERS', channel)
 
 
@@ -825,7 +840,7 @@ def _parse_mode(client, command, actor, args):
         return
 
     # channel-specific modes
-    chan = client.server.channels[channel]
+    chan = client.server.get_channel(channel)
 
     user_modes = set(client._get_prefixes().itervalues())
 
@@ -955,6 +970,6 @@ def _parse_nick(client, command, actor, args):
 def _parse_invite(client, command, actor, args):
     """Parse an INVITE and dispatch an event."""
     target, _, channel = args.rpartition(" ")
-    client.dispatch_event("INVITE", actor, target, channel)
+    client.dispatch_event("INVITE", actor, target, channel.lower())
 
 # vim: set ts=4 sts=4 sw=4 et:
