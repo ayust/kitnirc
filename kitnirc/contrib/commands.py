@@ -38,7 +38,7 @@ class CommandsModule(Module):
       COMMANDS      n/a
       *             command args...
     """
-
+    prefixes = set()
     def start(self, *args, **kwargs):
         super(CommandsModule, self).start(*args, **kwargs)
         config = self.controller.config
