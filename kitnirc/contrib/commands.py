@@ -41,7 +41,7 @@ class CommandsModule(Module):
 
 
     def __init__(self, *args, **kwargs):
-        super(CommandsModule, self, *args, **kwargs)
+        super(CommandsModule, self).__init__(*args, **kwargs)
         self.prefixes = set()
 
     def start(self, *args, **kwargs):
