@@ -118,7 +118,7 @@ class Host(object):
             return
         del self.channels[channel]
         _log.info("Left channel %s.", channel)
-        
+
     def get_channel(self, channel):
         if isinstance(channel, Channel):
             channel = channel.name
@@ -128,7 +128,7 @@ class Host(object):
                          "been added: '%s'", channel)
             return None
         return self.channels[channel]
-        
+
     def in_channel(self, channel):
         channel = str(channel).lower()
         return channel in self.channels
@@ -379,6 +379,10 @@ class Client(object):
     def notice(self, target, message):
         """Send a NOTICE to a user or channel."""
         self.send("NOTICE", target, ":" + message)
+
+    def topic(self, target, message):
+        """Sets TOPIC for a channel."""
+        self.send("TOPIC", target, ":" + message)
 
     def ctcp(self, target, message):
         """Send a CTCP message to a user or channel."""
