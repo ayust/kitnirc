@@ -39,6 +39,11 @@ class CommandsModule(Module):
       *             command args...
     """
 
+
+    def __init__(self, *args, **kwargs):
+        super(CommandsModule, self).__init__(*args, **kwargs)
+        self.prefixes = set()
+
     def start(self, *args, **kwargs):
         super(CommandsModule, self).start(*args, **kwargs)
         config = self.controller.config
@@ -49,7 +54,7 @@ class CommandsModule(Module):
             self.sigil = config.get("command", "sigil")
         else:
             self.sigil = None
-            
+
         if hasattr(self.controller.client, "user"):
             self.regenerate_prefixes()
         self.request_commands(self.controller.client)
