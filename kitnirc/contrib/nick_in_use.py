@@ -1,7 +1,6 @@
 import logging
 
 from kitnirc.modular import Module
-from kitnirc.client import parser
 from random import randint
 
 
