@@ -19,10 +19,6 @@ class NickInUseModule(Module):
         _log.info("NICKNAMEINUSE: {} is already in use, changing nick to {}".format(oldnick, newnick))
         client.nick(newnick)
 
-    @parser("NICKNAMEINUSE")
-    def _parse_nickname_in_use(client, command, actor, args):
-        client.dispatch_event("NICKNAMEINUSE", [])
-
 module = NickInUseModule
 
 # vim: set ts=4 sts=4 sw=4 et:
