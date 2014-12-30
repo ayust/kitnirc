@@ -322,6 +322,10 @@ class Client(object):
                 _log.debug("%s --> %s", self.server.host, line)
                 self.dispatch_event("LINE", line)
 
+    def ping(self):
+        "Convenience method to send a PING to server"
+        self.send("PING " + self.server.host)
+
     def send(self, *args):
         """Sends a single raw message to the IRC server.
 
@@ -975,12 +979,12 @@ def _parse_invite(client, command, actor, args):
     """Parse an INVITE and dispatch an event."""
     target, _, channel = args.rpartition(" ")
     client.dispatch_event("INVITE", actor, target, channel.lower())
-    
-    
+
+
 @parser("NICKNAMEINUSE")
 def _parse_nicknameinuse(client, command, actor, args):
     """Parse a NICKNAMEINUSE message and dispatch an event.
-    
+
     The parameter passed along with the event is the nickname
     which is already in use.
     """

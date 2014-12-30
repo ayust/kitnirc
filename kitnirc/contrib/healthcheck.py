@@ -69,7 +69,7 @@ class HealthcheckModule(Module):
                 # SystemExit in this thread, causing the thread to shut down.
                 os._exit(os.EX_IOERR)
             elif elapsed > self.delay:
-                self.controller.client.send("PING")
+                self.controller.client.ping()
 
             time.sleep(1)
 
