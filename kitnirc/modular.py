@@ -82,9 +82,9 @@ class Module(object):
         if handler:
             return handler(client, *args)
 
-    def trigger_event(self, event, client, args):
+    def trigger_event(self, event, client, args, force_dispatch=False):
         """Trigger a new event that will be dispatched to all modules."""
-        self.controller.process_event(event, client, args)
+        self.controller.process_event(event, client, args, force_dispatch=force_dispatch)
 
 
 class Controller(object):
@@ -268,7 +268,7 @@ class Controller(object):
         for module_name in self.module_ordering:
             module = self.loaded_modules[module_name]
             module.start(reloading=(module_name in old_modules))
-            
+
         self.process_event("STARTUP", self.client, (), force_dispatch=True)
 
         return not modules_failure
