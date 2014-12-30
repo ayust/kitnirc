@@ -7,7 +7,7 @@ from kitnirc import events
 from kitnirc import modular
 from kitnirc import user
 
-__version__ = "0.2.4"
+__version__ = "0.2.5"
 
 # Prevents output of "no handler found" if no other log handlers are added
 _log = logging.getLogger("kitnirc")
