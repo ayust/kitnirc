@@ -37,7 +37,7 @@ class HealthcheckModule(Module):
 
         assert self.timeout > self.delay
 
-        self.last_activity = time.clock()
+        self.last_activity = time.time()
         self._stop = False
         self.thread = threading.Thread(target=self.loop, name='healthcheck')
         self.thread.daemon = True
@@ -60,7 +60,7 @@ class HealthcheckModule(Module):
         _log.info("Healthcheck running: delay=%d timeout=%d",
                   self.delay, self.timeout)
         while not self._stop:
-            elapsed = time.clock() - self.last_activity
+            elapsed = time.time() - self.last_activity
 
             if elapsed > self.timeout:
                 _log.fatal("No incoming in last %d seconds - exiting.", elapsed)
@@ -69,13 +69,14 @@ class HealthcheckModule(Module):
                 # SystemExit in this thread, causing the thread to shut down.
                 os._exit(os.EX_IOERR)
             elif elapsed > self.delay:
+                _log.debug("Sending healthcheck ping...")
                 self.controller.client.ping()
 
             time.sleep(1)
 
-    @Module.handle("LINE")
-    def activity(self, client, line):
-        self.last_activity = time.clock()
+    @Module.handle("ACTIVITY")
+    def activity(self, client):
+        self.last_activity = time.time()
 
 
 module = HealthcheckModule

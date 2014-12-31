@@ -166,6 +166,8 @@ class Client(object):
             "LINE": [on_line],
             # Fires whenever a line isn't handled by LINE
             "RAWLINE": [],
+            # Fires whenever we see incoming network activity
+            "ACTIVITY": [],
 
             ###### IRC-LEVEL EVENTS ######
 
@@ -321,6 +323,7 @@ class Client(object):
                 line = line.rstrip("\r")
                 _log.debug("%s --> %s", self.server.host, line)
                 self.dispatch_event("LINE", line)
+                self.dispatch_event("ACTIVITY")
 
     def ping(self):
         "Convenience method to send a PING to server"
