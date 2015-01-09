@@ -336,7 +336,7 @@ class Client(object):
         """
         msg = " ".join(a.nick if isinstance(a, User) else str(a) for a in args)
         if "\n" in msg:
-            raise ValueError("Cannot send() a newline. Args: %r" % args)
+            raise ValueError("Cannot send() a newline. Args: %s" % repr(args))
         _log.debug("%s <-- %s", self.server.host, msg)
         self.socket.send(msg + "\r\n")
 
