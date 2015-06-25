@@ -365,7 +365,7 @@ class Client(object):
         """Send a message to a user or channel."""
         self.send("PRIVMSG", target, ":" + message)
 
-    def reply(self, incoming, user, message, prefix=True):
+    def reply(self, incoming, user, message, prefix=None):
         """Replies to a user in a given channel or PM.
 
         If the specified incoming is a user, simply sends a PM to user.
@@ -378,12 +378,21 @@ class Client(object):
         """
         if not isinstance(user, User):
             user = User(user)
-        if isinstance(incoming, User):
-            self.msg(user, message)
+        if prefix is None:
+            if isinstance(incoming, User):
+                self.msg(user,message)
+            else:
+                self.msg(incoming, "%s: %s" % (user.nick, message))
         elif prefix:
-            self.msg(incoming, "%s: %s" % (user.nick, message))
+            if isinstance(incoming, User):
+                self.msg(user, "%s: %s" % (user.nick, message))
+            else:
+                self.msg(incoming, "%s: %s" % (user.nick, message))
         else:
-            self.msg(incoming, "%s" % message)
+            if isinstance(incoming, User):
+                self.msg(user,message)
+            else:
+                self.msg(incoming, message)
 
     def notice(self, target, message):
         """Send a NOTICE to a user or channel."""
