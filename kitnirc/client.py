@@ -378,19 +378,15 @@ class Client(object):
         """
         if not isinstance(user, User):
             user = User(user)
-        if prefix is None:
-            if isinstance(incoming, User):
-                self.msg(user,message)
-            else:
-                self.msg(incoming, "%s: %s" % (user.nick, message))
-        elif prefix:
-            if isinstance(incoming, User):
+
+        if isinstance(incoming, User):
+            if prefix:
                 self.msg(user, "%s: %s" % (user.nick, message))
             else:
-                self.msg(incoming, "%s: %s" % (user.nick, message))
+                self.msg(user, message)
         else:
-            if isinstance(incoming, User):
-                self.msg(user,message)
+            if prefix is not False:
+                self.msg(incoming, "%s: %s" % (user.nick, message))
             else:
                 self.msg(incoming, message)
 
