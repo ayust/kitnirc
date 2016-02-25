@@ -75,13 +75,13 @@ def main():
     # If host isn't specified on the command line, try from config file
     host = args.host or config_or_none("server", "host")
     if not host:
-        argparse.ArgumentParser.error(
+        parser.error(
             "IRC host must be specified if not in config file.")
 
     # If nick isn't specified on the command line, try from config file
     nick = args.nick or config_or_none("server", "nick")
     if not nick:
-        argparse.ArgumentParser.error(
+        parser.error(
             "Nick must be specified if not in config file.")
 
     # KitnIRC's default client will use port 6667 if nothing else is specified,
